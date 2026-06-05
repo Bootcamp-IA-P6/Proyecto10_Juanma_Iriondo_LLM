@@ -9,8 +9,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.utils import *
 
-#OLLAMA_URL = "http://localhost:11434/api/generate"
-
 def stream_ollama(prompt, model):
     payload = {
         "model": model,

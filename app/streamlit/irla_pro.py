@@ -532,7 +532,7 @@ elif menu == "⚙️ Configuración":
             # st.write(f'configuración Artículo -> {plataforma} - {idioma} - {tema} - {st.session_state.hashtags} - {st.session_state.words}')
 
             # Hacer try except para la funcion de llamada
-            prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags en idioma {idioma}"
+            prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
             st.info(prompt_call)
 
             with st.spinner("Procesando información, por favor espere..."):

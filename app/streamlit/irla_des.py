@@ -1,6 +1,6 @@
 import os
 import sys
-import requests
+# import requests
 import streamlit as st
 from dotenv import load_dotenv
 from groq import Groq
@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.utils import get_groq_api_key
 from llm.llm_stream import *
+from llm.llm_call import *
 
 # =====================================================
 # CONFIG
@@ -33,7 +34,6 @@ MODELS = {
     }
 }
 
-# OLLAMA_URL = "http://localhost:11434/api/generate"
 
 # =====================================================
 # CSS
@@ -103,127 +103,6 @@ if "hashtags" not in st.session_state:
 
 if "words" not in st.session_state:
     st.session_state.words = 50
-
-# =====================================================
-# CLIENTS
-# =====================================================
-# def stream_ollama(prompt, model):
-#     payload = {
-#         "model": model,
-#         "prompt": prompt,
-#         "stream": True
-#     }
-
-#     response = requests.post(
-#         OLLAMA_URL,
-#         json=payload,
-#         stream=True,
-#         timeout=300
-#     )
-
-#     response.raise_for_status()
-
-#     for line in response.iter_lines():
-#         if not line:
-#             continue
-
-#         try:
-#             data = requests.models.complexjson.loads(line)
-
-#             if "response" in data:
-#                 yield data["response"]
-
-#         except Exception:
-#             pass
-
-
-# def stream_groq(prompt, model):
-
-#     client = Groq(api_key=get_groq_api_key())
-
-#     stream = client.chat.completions.create(
-#         model=model,
-#         messages=[
-#             {
-#                 "role": "user",
-#                 "content": prompt
-#             }
-#         ],
-#         temperature=st.session_state.temperature,
-#         max_tokens=st.session_state.max_tokens,
-#         stream=True
-#     )
-
-#     for chunk in stream:
-
-#         delta = chunk.choices[0].delta.content
-
-#         if delta:
-#             yield delta
-
-
-# def stream_response(prompt):
-
-#     model = st.session_state.selected_model
-
-#     provider = MODELS[model]["provider"]
-
-#     if provider == "ollama":
-#         yield from stream_ollama(prompt, model)
-
-#     elif provider == "groq":
-#         yield from stream_groq(prompt, model)
-
-
-# ======================================================================
-# LLAMADAS DIRECTAS
-# ======================================================================
-# def call_ollama(prompt, model):
-
-#     response = requests.post(
-#         OLLAMA_URL,
-#         json={
-#             "model": model,
-#             "prompt": prompt,
-#             # "options": {"temperature": 0.2}
-#             "stream": False
-#         }
-#     )
-
-#     response.raise_for_status()
-
-#     return response.json()["response"]
-
-
-# def call_groq(prompt, model):
-
-#     client = Groq(api_key=get_groq_api_key())
-
-#     completion = client.chat.completions.create(
-#         model=model,
-#         messages=[
-#             {
-#                 "role": "user",
-#                 "content": prompt
-#             }
-#         ]
-#     )
-
-#     return completion.choices[0].message.content
-
-
-# def call_response(prompt):
-
-#     model = st.session_state.selected_model
-
-#     provider = MODELS[model]["provider"]
-
-#     if provider == "ollama":
-#         return call_ollama(prompt, model)
-
-#     elif provider == "groq":
-#         return call_groq(prompt, model)
-
 
 
 # =====================================================
@@ -519,12 +398,12 @@ elif menu == "⚙️ Configuración":
     if st.button('Haz clic aquí'):
         if tema:
             # Hacer try except para la funcion de llamada
-            prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags en idioma {idioma}"
+            prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
             st.info(prompt_call)
 
             with st.spinner("Procesando información, por favor espere..."):
                 with st.container(border=True):
-                    # st.write(call_response(prompt_call))
-                    pass
+                    st.write(call_response(prompt_call, MODELS, st.session_state))
+                    
         else:
             st.info("Debes escribir un tema")
