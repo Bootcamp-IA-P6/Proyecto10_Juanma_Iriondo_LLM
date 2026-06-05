@@ -9,6 +9,7 @@ from groq import Groq
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.utils import get_groq_api_key
+from llm.llm_stream import *
 
 # =====================================================
 # CONFIG
@@ -32,7 +33,7 @@ MODELS = {
     }
 }
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+# OLLAMA_URL = "http://localhost:11434/api/generate"
 
 # =====================================================
 # CSS
@@ -106,122 +107,122 @@ if "words" not in st.session_state:
 # =====================================================
 # CLIENTS
 # =====================================================
-def stream_ollama(prompt, model):
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": True
-    }
+# def stream_ollama(prompt, model):
+#     payload = {
+#         "model": model,
+#         "prompt": prompt,
+#         "stream": True
+#     }
 
-    response = requests.post(
-        OLLAMA_URL,
-        json=payload,
-        stream=True,
-        timeout=300
-    )
+#     response = requests.post(
+#         OLLAMA_URL,
+#         json=payload,
+#         stream=True,
+#         timeout=300
+#     )
 
-    response.raise_for_status()
+#     response.raise_for_status()
 
-    for line in response.iter_lines():
-        if not line:
-            continue
+#     for line in response.iter_lines():
+#         if not line:
+#             continue
 
-        try:
-            data = requests.models.complexjson.loads(line)
+#         try:
+#             data = requests.models.complexjson.loads(line)
 
-            if "response" in data:
-                yield data["response"]
+#             if "response" in data:
+#                 yield data["response"]
 
-        except Exception:
-            pass
-
-
-def stream_groq(prompt, model):
-
-    client = Groq(api_key=get_groq_api_key())
-
-    stream = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=st.session_state.temperature,
-        max_tokens=st.session_state.max_tokens,
-        stream=True
-    )
-
-    for chunk in stream:
-
-        delta = chunk.choices[0].delta.content
-
-        if delta:
-            yield delta
+#         except Exception:
+#             pass
 
 
-def stream_response(prompt):
+# def stream_groq(prompt, model):
 
-    model = st.session_state.selected_model
+#     client = Groq(api_key=get_groq_api_key())
 
-    provider = MODELS[model]["provider"]
+#     stream = client.chat.completions.create(
+#         model=model,
+#         messages=[
+#             {
+#                 "role": "user",
+#                 "content": prompt
+#             }
+#         ],
+#         temperature=st.session_state.temperature,
+#         max_tokens=st.session_state.max_tokens,
+#         stream=True
+#     )
 
-    if provider == "ollama":
-        yield from stream_ollama(prompt, model)
+#     for chunk in stream:
 
-    elif provider == "groq":
-        yield from stream_groq(prompt, model)
+#         delta = chunk.choices[0].delta.content
+
+#         if delta:
+#             yield delta
+
+
+# def stream_response(prompt):
+
+#     model = st.session_state.selected_model
+
+#     provider = MODELS[model]["provider"]
+
+#     if provider == "ollama":
+#         yield from stream_ollama(prompt, model)
+
+#     elif provider == "groq":
+#         yield from stream_groq(prompt, model)
 
 
 # ======================================================================
 # LLAMADAS DIRECTAS
 # ======================================================================
-def call_ollama(prompt, model):
+# def call_ollama(prompt, model):
 
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": model,
-            "prompt": prompt,
-            # "options": {"temperature": 0.2}
-            "stream": False
-        }
-    )
+#     response = requests.post(
+#         OLLAMA_URL,
+#         json={
+#             "model": model,
+#             "prompt": prompt,
+#             # "options": {"temperature": 0.2}
+#             "stream": False
+#         }
+#     )
 
-    response.raise_for_status()
+#     response.raise_for_status()
 
-    return response.json()["response"]
-
-
-def call_groq(prompt, model):
-
-    client = Groq(api_key=get_groq_api_key())
-
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-
-    return completion.choices[0].message.content
+#     return response.json()["response"]
 
 
-def call_response(prompt):
+# def call_groq(prompt, model):
 
-    model = st.session_state.selected_model
+#     client = Groq(api_key=get_groq_api_key())
 
-    provider = MODELS[model]["provider"]
+#     completion = client.chat.completions.create(
+#         model=model,
+#         messages=[
+#             {
+#                 "role": "user",
+#                 "content": prompt
+#             }
+#         ]
+#     )
 
-    if provider == "ollama":
-        return call_ollama(prompt, model)
+#     return completion.choices[0].message.content
 
-    elif provider == "groq":
-        return call_groq(prompt, model)
+
+# def call_response(prompt):
+
+#     model = st.session_state.selected_model
+
+#     provider = MODELS[model]["provider"]
+
+#     if provider == "ollama":
+#         return call_ollama(prompt, model)
+
+#     elif provider == "groq":
+#         return call_groq(prompt, model)
 
 
 
@@ -257,17 +258,6 @@ with st.sidebar:
     )
 
     st.divider()
-
-    # selected = st.selectbox(
-    #     "Modelo",
-    #     options=list(MODELS.keys()),
-    #     index=list(MODELS.keys()).index(
-    #         st.session_state.selected_model
-    #     ),
-    #     format_func=lambda x: MODELS[x]["label"]
-    # )
-
-    #st.session_state.selected_model = selected
 
     st.selectbox(
         "Modelo",
@@ -360,7 +350,7 @@ if menu == "💬 Chat":
 
             try:
 
-                for chunk in stream_response(prompt):
+                for chunk in stream_response(prompt, MODELS, st.session_state):
 
                     full_response += chunk
 
@@ -528,15 +518,13 @@ elif menu == "⚙️ Configuración":
 
     if st.button('Haz clic aquí'):
         if tema:
-            # st.write(f'configuración General -> {st.session_state.temperature} - {st.session_state.max_tokens}')
-            # st.write(f'configuración Artículo -> {plataforma} - {idioma} - {tema} - {st.session_state.hashtags} - {st.session_state.words}')
-
             # Hacer try except para la funcion de llamada
             prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags en idioma {idioma}"
             st.info(prompt_call)
 
             with st.spinner("Procesando información, por favor espere..."):
                 with st.container(border=True):
-                    st.write(call_response(prompt_call))
+                    # st.write(call_response(prompt_call))
+                    pass
         else:
             st.info("Debes escribir un tema")
