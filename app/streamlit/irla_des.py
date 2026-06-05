@@ -2,8 +2,8 @@ import os
 import sys
 # import requests
 import streamlit as st
-from dotenv import load_dotenv
-from groq import Groq
+# from dotenv import load_dotenv
+# from groq import Groq
 
 # Añade la carpeta superior al path de búsqueda de Python
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -29,8 +29,12 @@ MODELS = {
         "label": "Llama 3.2 1B (Local)"
     },
     "llama-3.3-70b-versatile": {
-        "provider": "groq",
+        "provider": "groq1",
         "label": "Llama 3.3 70B (Groq)"
+    },
+    "groq/compound-mini": {
+        "provider": "groq2",
+        "label": "Groq/Compound-mini (Groq)"
     }
 }
 
@@ -332,11 +336,7 @@ elif menu == "⚙️ Configuración":
         step=256
     )
 
-    st.info(
-        "Estos parámetros se aplican a Groq. "
-        "Ollama puede requerir parámetros "
-        "adicionales según el modelo."
-    )
+    st.divider()
 
     # Filtro plataforma
     plataforma = st.radio(
@@ -407,3 +407,13 @@ elif menu == "⚙️ Configuración":
                     
         else:
             st.info("Debes escribir un tema")
+
+    st.divider()
+
+    # if st.button('Probando ollama cloud'):
+    #      with st.spinner("Procesando información, por favor espere..."):
+    #             with st.container(border=True):
+    #                 # st.write(call_ollama_cloud())
+    #                 pass
+
+                    

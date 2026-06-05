@@ -22,3 +22,14 @@ def get_ollama_url():
         )
 
     return ollama_url
+
+def get_ollama_api_key():
+    load_dotenv()
+    ollama_api_key = os.getenv("OLLAMA_API_KEY")
+
+    if not ollama_api_key:
+        raise RuntimeError(
+            "No se encontró OLLAMA_API_KEY"
+        )
+
+    return ollama_api_key

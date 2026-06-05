@@ -5,14 +5,17 @@ from dotenv import load_dotenv
 from groq import Groq
 
 # Añade la carpeta superior al path de búsqueda de Python
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.utils import *
 
-def stream_ollama(prompt, model):
+
+def stream_ollama(prompt, model, temperature, max_tokens):
     payload = {
         "model": model,
         "prompt": prompt,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
         "stream": True
     }
 
@@ -73,7 +76,7 @@ def stream_response(prompt, MODELS, session_state):
     provider = MODELS[model]["provider"]
 
     if provider == "ollama":
-        yield from stream_ollama(prompt, model)
+        yield from stream_ollama(prompt, model, session_state.temperature, session_state.max_tokens)
 
-    elif provider == "groq":
+    elif provider == "groq1" or provider == "groq2":
         yield from stream_groq(prompt, model, session_state.temperature, session_state.max_tokens)
