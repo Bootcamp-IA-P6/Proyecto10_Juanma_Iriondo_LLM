@@ -6,8 +6,6 @@ import pandas as pd
 # Añade la carpeta superior al path de búsqueda de Python
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-#from utils.utils import get_groq_api_key
-
 from utils.utils import *
 from llm.llm_stream import *
 from llm.llm_call import *
@@ -37,7 +35,6 @@ MODELS = {
         "label": "Groq/Compound-mini (Groq)"
     }
 }
-
 
 # =====================================================
 # CSS
@@ -303,7 +300,7 @@ elif menu == "📚 Historial":
 
 elif menu == "👽 Modelos":
 
-    st.title("👽 👾 🗿 ⛵ 🚤 🏴‍☠️ 🏝️ Modelos")
+    st.title("👽 Modelos")
 
     for model_name, config in MODELS.items():
 
@@ -414,10 +411,6 @@ elif menu == "⚙️ Configuración":
                     result = call_response(prompt_call, MODELS, st.session_state)
                     st.write(result)
 
-                    # st.write('Probando resultados')
-                    # st.write(result['stats']['tokens_enviados'])
-                    # st.write(result['stats']['tokens_recibidos'])
-
                     # 1. Convertir el array a un DataFrame de Pandas
                     df = pd.DataFrame(precios_modelos)
 
@@ -435,8 +428,7 @@ elif menu == "⚙️ Configuración":
                     st.subheader("Tabla Interactiva")
                     st.dataframe(df_result)
                     st.write('* Precios en dolares')
-
-                    
+                  
         else:
             st.info("Debes escribir un tema")
 

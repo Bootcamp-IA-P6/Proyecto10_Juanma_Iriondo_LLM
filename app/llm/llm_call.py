@@ -222,7 +222,6 @@ def obtener_precios_openai_anthropic():
             id_modelo = model.get('id')
             
             # Filtro estricto: solo IDs que comiencen con openai/ o anthropic/
-            #if id_modelo.startswith("openai/") or id_modelo.startswith("anthropic/"):
             if id_modelo.startswith("openai/gpt-5.5") or id_modelo.startswith("anthropic/claude-opus-4.8"):
 
                 precio={
@@ -233,15 +232,6 @@ def obtener_precios_openai_anthropic():
 
                 total_modelos += 1
                 pricing = model.get('pricing', {})
-                
-                # Conversión a costo por millón de tokens
-                # prompt_price = float(pricing.get('prompt', 0)) * 1000000
-                # completion_price = float(pricing.get('completion', 0)) * 1000000
-                
-                # print(f"Modelo: {id_modelo}")
-                # print(f"  - Entrada: ${prompt_price:.2f} por millón de tokens")
-                # print(f"  - Salida: ${completion_price:.2f} por millón de tokens")
-                # print("-" * 30)
 
                 # Precio por token
                 prompt_price = float(pricing.get('prompt', 0))
