@@ -214,25 +214,59 @@ def obtener_precios_openai_anthropic():
         print("=== LISTA DE MODELOS FILTRADOS ===")
         # Contador para saber cuántos modelos encontramos
         total_modelos = 0
+
+        # Inicializa datos de salida
+        precios=[]
         
         for model in data.get('data', []):
             id_modelo = model.get('id')
             
             # Filtro estricto: solo IDs que comiencen con openai/ o anthropic/
-            if id_modelo.startswith("openai/") or id_modelo.startswith("anthropic/"):
+            #if id_modelo.startswith("openai/") or id_modelo.startswith("anthropic/"):
+            if id_modelo.startswith("openai/gpt-5.5") or id_modelo.startswith("anthropic/claude-opus-4.8"):
+
+                precio={
+                    "modelo": "",
+                    "precio_token_entrada": "",
+                    "precio_token_salida": ""
+                }
+
                 total_modelos += 1
                 pricing = model.get('pricing', {})
                 
                 # Conversión a costo por millón de tokens
-                prompt_price = float(pricing.get('prompt', 0)) * 1000000
-                completion_price = float(pricing.get('completion', 0)) * 1000000
+                # prompt_price = float(pricing.get('prompt', 0)) * 1000000
+                # completion_price = float(pricing.get('completion', 0)) * 1000000
+                
+                # print(f"Modelo: {id_modelo}")
+                # print(f"  - Entrada: ${prompt_price:.2f} por millón de tokens")
+                # print(f"  - Salida: ${completion_price:.2f} por millón de tokens")
+                # print("-" * 30)
+
+                # Precio por token
+                prompt_price = float(pricing.get('prompt', 0))
+                completion_price = float(pricing.get('completion', 0))
                 
                 print(f"Modelo: {id_modelo}")
-                print(f"  - Entrada: ${prompt_price:.2f} por millón de tokens")
-                print(f"  - Salida: ${completion_price:.2f} por millón de tokens")
+
+                modelo_str = f"{id_modelo}"
+                print(modelo_str)
+
+                print(f"  - Entrada: ${prompt_price:.6f} por token")
+                print(f"  - Salida: ${completion_price:.6f} por token")
                 print("-" * 30)
+
+                # Añade datos a precios
+                precio["modelo"] = modelo_str
+                precio["precio_token_entrada"] = f"{prompt_price:.6f}"
+                precio["precio_token_salida"] = f"{completion_price:.6f}"
+
+                precios.append(precio)
                 
         print(f"Se encontraron un total de {total_modelos} modelos de OpenAI y Anthropic.")
+
+        print(precios)
+        return precios
             
     except requests.exceptions.RequestException as e:
         print(f"Error de conexión: {e}")

@@ -1,14 +1,14 @@
 import os
 import sys
-# import requests
 import streamlit as st
-# from dotenv import load_dotenv
-# from groq import Groq
+import pandas as pd
 
 # Añade la carpeta superior al path de búsqueda de Python
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils.utils import get_groq_api_key
+#from utils.utils import get_groq_api_key
+
+from utils.utils import *
 from llm.llm_stream import *
 from llm.llm_call import *
 
@@ -107,6 +107,12 @@ if "hashtags" not in st.session_state:
 
 if "words" not in st.session_state:
     st.session_state.words = 50
+
+
+# =====================================================
+# CARGAR PRECIOS DE LOS MODELOS
+# =====================================================
+precios_modelos = get_prices_openai_anthropic()
 
 
 # =====================================================
@@ -395,7 +401,7 @@ elif menu == "⚙️ Configuración":
 
     st.divider()
 
-    if st.button('Haz clic aquí'):
+    if st.button('Crear Articulo'):
         if tema:
             # Hacer try except para la funcion de llamada
             prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
@@ -403,12 +409,38 @@ elif menu == "⚙️ Configuración":
 
             with st.spinner("Procesando información, por favor espere..."):
                 with st.container(border=True):
-                    st.write(call_response(prompt_call, MODELS, st.session_state))
+                    #st.write(call_response(prompt_call, MODELS, st.session_state))
+
+                    result = call_response(prompt_call, MODELS, st.session_state)
+                    st.write(result)
+
+                    # st.write('Probando resultados')
+                    # st.write(result['stats']['tokens_enviados'])
+                    # st.write(result['stats']['tokens_recibidos'])
+
+                    # 1. Convertir el array a un DataFrame de Pandas
+                    df = pd.DataFrame(precios_modelos)
+
+                    # 2. Convertir las columnas necesarias a float
+                    df['precio_token_entrada'] = df['precio_token_entrada'].astype(float)
+                    df['precio_token_salida'] = df['precio_token_salida'].astype(float)
+
+                    # 2.- Hacer las operaciones
+                    df['precio_tokens_entrada'] = df['precio_token_entrada'] * result['stats']['tokens_enviados']
+                    df['precio_tokens_salida'] = df['precio_token_salida'] * result['stats']['tokens_recibidos']
+
+                    # 3. Mostrar en pantalla como tabla interactiva
+                    df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
+                    df_result['precio_tokens_total'] = df_result['precio_tokens_entrada'] + df_result['precio_tokens_salida']
+                    st.subheader("Tabla Interactiva")
+                    st.dataframe(df_result)
+                    st.write('* Precios en dolares')
+
                     
         else:
             st.info("Debes escribir un tema")
 
-    st.divider()
+    # st.divider()
 
     # if st.button('Probando ollama cloud'):
     #      with st.spinner("Procesando información, por favor espere..."):
@@ -416,4 +448,4 @@ elif menu == "⚙️ Configuración":
     #                 # st.write(call_ollama_cloud())
     #                 pass
 
-                    
+
