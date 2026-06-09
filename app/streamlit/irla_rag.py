@@ -6,8 +6,10 @@ import pandas as pd
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+# from langchain_core.prompts import PromptTemplate
+# from langchain_core.output_parsers import StrOutputParser
+
+import requests
 
 
 # Añade la carpeta superior al path de búsqueda de Python
@@ -16,6 +18,47 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.utils import *
 from llm.llm_stream import *
 from llm.llm_call import *
+
+
+# FUNCIONES
+def obtener_imagen_unsplash(busqueda):
+    # 1. Usamos el dominio correcto de la API y el endpoint de búsqueda
+    url = "https://api.unsplash.com/search/photos"
+    
+    # 2. Pasamos los parámetros de forma limpia en un diccionario
+    params = {
+        "query": busqueda,
+        "client_id": get_unsplash_api_key(),
+        "per_page": 1 # Solo le pedimos 1 imagen para ir rápido
+    }
+    
+    try:
+        # requests se encarga de juntar la URL y los params correctamente con '?' y '&'
+        response = requests.get(url, params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # 3. Al buscar, Unsplash devuelve una lista en la propiedad 'results'
+            if data['results']:
+                primera_imagen = data['results'][0] # Tomamos el primer resultado
+                
+                #image_url = primera_imagen['urls']['regular'] # de 1080px
+                #image_url = primera_imagen['urls']['thumb'] # de 200px
+                image_url = primera_imagen['urls']['small'] # de 400px, ideal para web
+                author = primera_imagen['user']['name']
+                return image_url, author
+            else:
+                st.warning(f"No se encontraron imágenes para: '{busqueda}'")
+                return None, None
+        else:
+            st.error(f"Error {response.status_code} al conectar con Unsplash. Revisa tu Access Key.")
+            return None, None
+            
+    except Exception as e:
+        st.error(f"Ocurrió un error: {e}")
+        return None, None   
+
 
 # =====================================================
 # CONFIG
@@ -511,3 +554,25 @@ elif menu == "⚙️ Configuración":
     #             with st.container(border=True):
     #                 # st.write(call_ollama_cloud())
     #                 pass
+
+    st.divider()
+
+    if st.button('Obtener Imagen'):
+         with st.spinner("Preparando imagen, por favor espere..."):
+                with st.container(border=True):
+                    query="python"
+                    query="IA"
+                    query="optica"
+
+                    img_url, autor = obtener_imagen_unsplash(query)
+        
+                    if img_url:
+                        # Mostrar la imagen en Streamlit
+                        st.image(img_url, caption=f"Foto por {autor}", width=500)
+                        
+                        # Botón para descargar la imagen directamente
+                        st.markdown(f"[Descargar imagen original]({img_url})", unsafe_allow_html=True)
+                    else:
+                        st.error("No se pudo obtener la imagen.")
+
+                    #pass

@@ -35,6 +35,18 @@ def get_ollama_api_key():
 
     return ollama_api_key
 
+def get_unsplash_api_key():
+    load_dotenv()
+    unsplash_api_key = os.getenv("UNSPLASH_ACCESS_KEY")
+
+    if not unsplash_api_key:
+        raise RuntimeError(
+            "No se encontró UNSPLASH_ACCESS_KEY"
+        )
+
+    return unsplash_api_key
+
+
 def get_prices_openai_anthropic():
     url = "https://openrouter.ai/api/v1/models"
     
