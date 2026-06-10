@@ -18,6 +18,173 @@ from llm.llm_images import *
 # =====================================================
 # FUNCIONES
 # =====================================================
+def gen_article():
+    result = call_response(prompt_call, MODELS, st.session_state)
+    st.write(result)
+
+    # --------------------------------------------------------------------------------------------------------------
+    # Comienza a trabajar con langchain
+    # --------------------------------------------------------------------------------------------------------------
+
+    texto = result['text']
+
+    # 1. Ajustamos el Prompt para que sea extremadamente estricto
+    template = """Eres un traductor profesional automático muy preciso.
+    Traduce el texto del {idioma_entrada} al {idioma_salida}.
+
+    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
+
+    Texto a traducir:
+    {texto}"""
+
+    # Usamos ChatPromptTemplate que se lleva mejor con ChatGroq y LCEL
+    prompt_template = ChatPromptTemplate.from_template(template)
+
+    # 2. Inicializar el Modelo con TEMPERATURE = 0.0 (Clave para evitar que se enrolle)
+    llm_traduccion = ChatGroq(
+        temperature=0.0,  # <-- 0.0 hace que sea directo y no invente texto extra
+        groq_api_key=get_groq_api_key(), 
+        model_name="llama-3.3-70b-versatile"
+    )
+
+    # 3. Creación de la cadena usando el operador LCEL (|)
+    cadena = prompt_template | llm_traduccion
+
+    # 4. Ejecución de la cadena
+    traduccion = cadena.invoke(input={
+        "idioma_entrada": "español",  
+        "idioma_salida": idioma, 
+        "texto": texto
+    })
+
+    # 4. EXTRACCIÓN DE TOKENS
+    # Groq guarda los tokens dentro del diccionario 'response_metadata'
+    metadata = traduccion.response_metadata
+    tokens_info = metadata.get("token_usage", {})
+
+    tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
+    tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
+    tokens_totales = tokens_info.get("total_tokens", 0)
+
+    # 5. EXTRAER EL TEXTO
+    traduccion = traduccion.content
+
+    # --- MOSTRAR EN STREAMLIT ---
+    st.write(traduccion)
+
+    st.info("Tokens de la Traducción")
+
+    # Mostramos las métricas de tokens de forma elegante en la interfaz
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
+    with col2:
+        st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
+    with col3:
+        st.metric(label="Tokens Totales", value=tokens_totales)
+
+    # ------------------------------------ Código para mostrar precios--------------------------------------------
+    # 1. Convertir el array a un DataFrame de Pandas
+    df = pd.DataFrame(precios_modelos)
+
+    # 2. Convertir las columnas necesarias a float
+    df['precio_token_entrada'] = df['precio_token_entrada'].astype(float)
+    df['precio_token_salida'] = df['precio_token_salida'].astype(float)
+
+    # 2.- Hacer las operaciones
+    df['precio_tokens_entrada'] = df['precio_token_entrada'] * (result['stats']['tokens_enviados'] + tokens_input)
+    df['precio_tokens_salida'] = df['precio_token_salida'] * (result['stats']['tokens_recibidos'] + tokens_output)
+
+    # 3. Mostrar en pantalla como tabla interactiva
+    df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
+    df_result['precio_tokens_total'] = df_result['precio_tokens_entrada'] + df_result['precio_tokens_salida']
+    st.subheader("Tabla Interactiva")
+    st.dataframe(df_result)
+    st.write('* Precios en dolares')
+
+    return traduccion
+
+
+def prueba_article():
+    articulo = "Hola que tal estas"
+    st.write(articulo)
+
+    return articulo
+
+def gen_image():
+    if ia_imagen == "Unsplash":
+        # ----------------------------------------------------
+        # Código de Unsplash
+        # ----------------------------------------------------
+        img_uns, autor = get_image_unsplash(tema)
+
+        if img_uns:
+            # Mostrar la imagen en Streamlit
+            st.image(img_uns, caption=f"Foto por {autor}", width=500)
+            
+            # Botón para descargar la imagen directamente
+            st.markdown(f"[Descargar imagen original]({img_uns})", unsafe_allow_html=True)
+        else:
+            st.error("No se pudo obtener la imagen.")
+        
+    elif ia_imagen == "Hugging Face":
+        # st.write("Has seleccionado **Hugging Face**. que no tiene tokens")
+        # ----------------------------------------------------
+        # Código de Hugging Face
+        # ----------------------------------------------------
+        client = InferenceClient(
+            provider="wavespeed",
+            api_key=get_hf_token(),
+        )
+
+        # output is a PIL.Image object
+        image_hf = client.text_to_image(
+            # "A cute alien creature in a spaceship",
+            # "elefante con alas volando",
+            # "elephant with wings flying",
+            # "imagen de un robot",
+            tema,
+            model="black-forest-labs/FLUX.1-dev",
+            # width=500,
+            # height=500,
+        )
+
+        # Redimensionar a 500x500 píxeles
+        image_hf = image_hf.resize((500, 500))
+
+        image_hf = get_image_hugging_face(tema)
+
+        st.image(image_hf, caption=tema)
+
+        # Permite descargarla
+        image_hf.save("temp.png")
+
+        with open("temp.png", "rb") as f:
+            st.download_button(
+                "Descargar imagen",
+                f,
+                file_name=f"{tema}.png",
+                mime="image/png"
+            )
+    else:
+        # ----------------------------------------------------
+        # Código de Pollinations
+        # ----------------------------------------------------
+        image_pol = get_image_pollinations(tema, width=500, height=500)
+
+        st.image(image_pol, caption=tema)
+
+        # Permite descargarla
+        image_pol.save("temp.png")
+
+        with open("temp.png", "rb") as f:
+            st.download_button(
+                "Descargar imagen",
+                f,
+                file_name=f"{tema}.png",
+                mime="image/png"
+            )
+
 
 
 
@@ -409,6 +576,18 @@ elif menu == "⚙️ Configuración":
 
     st.divider()
 
+    # Filtro ia_imagen
+    ia_imagen = st.radio(
+        "IA de la imagen",
+        [
+            "Unsplash",
+            "Hugging Face",
+            "Pollinations"
+        ]
+    )
+
+    st.divider()
+
     if st.button('Crear Articulo'):
         if tema:
             # Hacer try except para la funcion de llamada
@@ -419,91 +598,15 @@ elif menu == "⚙️ Configuración":
             with st.spinner("Procesando información, por favor espere..."):
                 with st.container(border=True):
 
-                    result = call_response(prompt_call, MODELS, st.session_state)
-                    st.write(result)
+                    # article = gen_article()
+                    article = prueba_article()
 
-                    # --------------------------------------------------------------------------------------------------------------
-                    # Comienza a trabajar con langchain
-                    # --------------------------------------------------------------------------------------------------------------
+            with st.spinner("Preparando imagen, por favor espere..."):
+                with st.container(border=True):
 
-                    texto = result['text']
+                    gen_image()
+                    
 
-                    # 1. Ajustamos el Prompt para que sea extremadamente estricto
-                    template = """Eres un traductor profesional automático muy preciso.
-                    Traduce el texto del {idioma_entrada} al {idioma_salida}.
-
-                    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
-
-                    Texto a traducir:
-                    {texto}"""
-
-                    # Usamos ChatPromptTemplate que se lleva mejor con ChatGroq y LCEL
-                    prompt_template = ChatPromptTemplate.from_template(template)
-
-                    # 2. Inicializar el Modelo con TEMPERATURE = 0.0 (Clave para evitar que se enrolle)
-                    llm_traduccion = ChatGroq(
-                        temperature=0.0,  # <-- 0.0 hace que sea directo y no invente texto extra
-                        groq_api_key=get_groq_api_key(), 
-                        model_name="llama-3.3-70b-versatile"
-                    )
-
-                    # 3. Creación de la cadena usando el operador LCEL (|)
-                    cadena = prompt_template | llm_traduccion
-
-                    # 4. Ejecución de la cadena
-                    traduccion = cadena.invoke(input={
-                        "idioma_entrada": "español",  
-                        "idioma_salida": idioma, 
-                        "texto": texto
-                    })
-
-                    # 4. EXTRACCIÓN DE TOKENS
-                    # Groq guarda los tokens dentro del diccionario 'response_metadata'
-                    metadata = traduccion.response_metadata
-                    tokens_info = metadata.get("token_usage", {})
-
-                    tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
-                    tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
-                    tokens_totales = tokens_info.get("total_tokens", 0)
-
-                    # 5. EXTRAER EL TEXTO
-                    traduccion = traduccion.content
-
-                    # --- MOSTRAR EN STREAMLIT ---
-                    st.write(traduccion)
-
-                    st.info("Tokens de la Traducción")
-
-                    # Mostramos las métricas de tokens de forma elegante en la interfaz
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
-                    with col2:
-                        st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
-                    with col3:
-                        st.metric(label="Tokens Totales", value=tokens_totales)
-
-                    # ---------------------------------------------------------------------------------------------------------------
-
-
-                    # Empezamos a trabajar con los precios
-                    # 1. Convertir el array a un DataFrame de Pandas
-                    df = pd.DataFrame(precios_modelos)
-
-                    # 2. Convertir las columnas necesarias a float
-                    df['precio_token_entrada'] = df['precio_token_entrada'].astype(float)
-                    df['precio_token_salida'] = df['precio_token_salida'].astype(float)
-
-                    # 2.- Hacer las operaciones
-                    df['precio_tokens_entrada'] = df['precio_token_entrada'] * (result['stats']['tokens_enviados'] + tokens_input)
-                    df['precio_tokens_salida'] = df['precio_token_salida'] * (result['stats']['tokens_recibidos'] + tokens_output)
-
-                    # 3. Mostrar en pantalla como tabla interactiva
-                    df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
-                    df_result['precio_tokens_total'] = df_result['precio_tokens_entrada'] + df_result['precio_tokens_salida']
-                    st.subheader("Tabla Interactiva")
-                    st.dataframe(df_result)
-                    st.write('* Precios en dolares')
                   
         else:
             st.info("Debes escribir un tema")
@@ -518,22 +621,11 @@ elif menu == "⚙️ Configuración":
 
     st.divider()
 
-    if st.button('Obtener Imagen'):
+    if st.button('Crear Imagen'):
          with st.spinner("Preparando imagen, por favor espere..."):
                 with st.container(border=True):
-                    # ----------------------------------------------------
-                    # Código de Unsplash
-                    # ----------------------------------------------------
-                    # img_url, autor = get_image_unsplash(tema)
-        
-                    # if img_url:
-                    #     # Mostrar la imagen en Streamlit
-                    #     st.image(img_url, caption=f"Foto por {autor}", width=500)
-                        
-                    #     # Botón para descargar la imagen directamente
-                    #     st.markdown(f"[Descargar imagen original]({img_url})", unsafe_allow_html=True)
-                    # else:
-                    #     st.error("No se pudo obtener la imagen.")
+
+                    gen_image()
 
                     # ----------------------------------------------------
                     # Código de Google
@@ -560,49 +652,3 @@ elif menu == "⚙️ Configuración":
                     #     )
                     # else:
                     #     st.error("No se pudo generar la imagen. Inténtalo con otra descripción.")
-
-                    # ----------------------------------------------------
-                    # Código de Hugging Face
-                    # ----------------------------------------------------
-                    # client = InferenceClient(
-                    #     provider="wavespeed",
-                    #     api_key=get_hf_token(),
-                    # )
-
-                    # # output is a PIL.Image object
-                    # image = client.text_to_image(
-                    #     # "A cute alien creature in a spaceship",
-                    #     # "elefante con alas volando",
-                    #     # "elephant with wings flying",
-                    #     "imagen de un robot",
-                    #     model="black-forest-labs/FLUX.1-dev",
-                    #     # width=500,
-                    #     # height=500,
-                    # )
-
-                    # # Redimensionar a 500x500 píxeles
-                    # image = image.resize((500, 500))
-
-
-                    # image = get_image_hugging_face(tema)
-
-                    # st.write(image)
-                    # image.save("robot_500.png")
-
-                    # ----------------------------------------------------
-                    # Código de Pollinations
-                    # ----------------------------------------------------
-                    imagen = get_image_pollinations(tema, width=500, height=500)
-
-                    st.image(imagen, caption=tema)
-
-                    # Permite descargarla
-                    imagen.save("temp.png")
-
-                    with open("temp.png", "rb") as f:
-                        st.download_button(
-                            "Descargar imagen",
-                            f,
-                            file_name=f"{tema}.png",
-                            mime="image/png"
-                        )
