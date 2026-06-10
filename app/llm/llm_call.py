@@ -8,13 +8,6 @@ from groq import Groq
 from ollama import Client
 
 
-# from langchain_groq import ChatGroq
-# from langchain_community.chat_models import ChatOllama
-# from langchain_core.prompts import ChatPromptTemplate
-# from langchain_core.output_parsers import StrOutputParser
-
-
-
 # Añade la carpeta superior al path de búsqueda de Python
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 

@@ -46,6 +46,40 @@ def get_unsplash_api_key():
 
     return unsplash_api_key
 
+def get_google_api_key():
+    load_dotenv()
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+
+    if not google_api_key:
+        raise RuntimeError(
+            "No se encontró GOOGLE_API_KEY"
+        )
+
+    return google_api_key
+
+
+def get_hf_token():
+    load_dotenv()
+    hf_token = os.getenv("HF_TOKEN")
+
+    if not hf_token:
+        raise RuntimeError(
+            "No se encontró HF_TOKEN"
+        )
+
+    return hf_token
+
+def get_pollinations_api_key():
+    load_dotenv()
+    pollinations_api_key = os.getenv("POLLINATIONS_API_KEY")
+
+    if not pollinations_api_key:
+        raise RuntimeError(
+            "No se encontró POLLINATIONS_API_KEY"
+        )
+
+    return pollinations_api_key
+
 
 def get_prices_openai_anthropic():
     url = "https://openrouter.ai/api/v1/models"

@@ -3,14 +3,8 @@ import sys
 import streamlit as st
 import pandas as pd
 
-
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-# from langchain_core.prompts import PromptTemplate
-# from langchain_core.output_parsers import StrOutputParser
-
-import requests
-
 
 # Añade la carpeta superior al path de búsqueda de Python
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -18,46 +12,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.utils import *
 from llm.llm_stream import *
 from llm.llm_call import *
+from llm.llm_images import *
 
 
+# =====================================================
 # FUNCIONES
-def obtener_imagen_unsplash(busqueda):
-    # 1. Usamos el dominio correcto de la API y el endpoint de búsqueda
-    url = "https://api.unsplash.com/search/photos"
-    
-    # 2. Pasamos los parámetros de forma limpia en un diccionario
-    params = {
-        "query": busqueda,
-        "client_id": get_unsplash_api_key(),
-        "per_page": 1 # Solo le pedimos 1 imagen para ir rápido
-    }
-    
-    try:
-        # requests se encarga de juntar la URL y los params correctamente con '?' y '&'
-        response = requests.get(url, params=params)
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            # 3. Al buscar, Unsplash devuelve una lista en la propiedad 'results'
-            if data['results']:
-                primera_imagen = data['results'][0] # Tomamos el primer resultado
-                
-                #image_url = primera_imagen['urls']['regular'] # de 1080px
-                #image_url = primera_imagen['urls']['thumb'] # de 200px
-                image_url = primera_imagen['urls']['small'] # de 400px, ideal para web
-                author = primera_imagen['user']['name']
-                return image_url, author
-            else:
-                st.warning(f"No se encontraron imágenes para: '{busqueda}'")
-                return None, None
-        else:
-            st.error(f"Error {response.status_code} al conectar con Unsplash. Revisa tu Access Key.")
-            return None, None
-            
-    except Exception as e:
-        st.error(f"Ocurrió un error: {e}")
-        return None, None   
+# =====================================================
+
 
 
 # =====================================================
@@ -560,19 +521,88 @@ elif menu == "⚙️ Configuración":
     if st.button('Obtener Imagen'):
          with st.spinner("Preparando imagen, por favor espere..."):
                 with st.container(border=True):
-                    query="python"
-                    query="IA"
-                    query="optica"
-
-                    img_url, autor = obtener_imagen_unsplash(query)
+                    # ----------------------------------------------------
+                    # Código de Unsplash
+                    # ----------------------------------------------------
+                    # img_url, autor = get_image_unsplash(tema)
         
-                    if img_url:
-                        # Mostrar la imagen en Streamlit
-                        st.image(img_url, caption=f"Foto por {autor}", width=500)
+                    # if img_url:
+                    #     # Mostrar la imagen en Streamlit
+                    #     st.image(img_url, caption=f"Foto por {autor}", width=500)
                         
-                        # Botón para descargar la imagen directamente
-                        st.markdown(f"[Descargar imagen original]({img_url})", unsafe_allow_html=True)
-                    else:
-                        st.error("No se pudo obtener la imagen.")
+                    #     # Botón para descargar la imagen directamente
+                    #     st.markdown(f"[Descargar imagen original]({img_url})", unsafe_allow_html=True)
+                    # else:
+                    #     st.error("No se pudo obtener la imagen.")
 
-                    #pass
+                    # ----------------------------------------------------
+                    # Código de Google
+                    # ----------------------------------------------------
+                    # query="Un gato astronauta estilo acuarela"
+
+                    # # Llamamos a nuestra función pasándole el prompt
+                    # image_bytes = get_image_google(query)
+                    
+                    # if image_bytes:
+                    #     # Convertimos los bytes a un objeto de imagen PIL para mostrarlo
+                    #     imagen_pil = Image.open(BytesIO(image_bytes))
+                        
+                    #     # Mostramos la imagen en pantalla con ancho limitado
+                    #     st.image(imagen_pil, caption="Resultado de Nano Banana AI", width=550)
+                    #     st.success("¡Imagen creada!")
+                        
+                    #     # Botón para descargar la imagen directamente
+                    #     st.download_button(
+                    #         label="💾 Descargar Imagen (PNG)",
+                    #         data=image_bytes,
+                    #         file_name="nano_banana_output.png",
+                    #         mime="image/png"
+                    #     )
+                    # else:
+                    #     st.error("No se pudo generar la imagen. Inténtalo con otra descripción.")
+
+                    # ----------------------------------------------------
+                    # Código de Hugging Face
+                    # ----------------------------------------------------
+                    # client = InferenceClient(
+                    #     provider="wavespeed",
+                    #     api_key=get_hf_token(),
+                    # )
+
+                    # # output is a PIL.Image object
+                    # image = client.text_to_image(
+                    #     # "A cute alien creature in a spaceship",
+                    #     # "elefante con alas volando",
+                    #     # "elephant with wings flying",
+                    #     "imagen de un robot",
+                    #     model="black-forest-labs/FLUX.1-dev",
+                    #     # width=500,
+                    #     # height=500,
+                    # )
+
+                    # # Redimensionar a 500x500 píxeles
+                    # image = image.resize((500, 500))
+
+
+                    # image = get_image_hugging_face(tema)
+
+                    # st.write(image)
+                    # image.save("robot_500.png")
+
+                    # ----------------------------------------------------
+                    # Código de Pollinations
+                    # ----------------------------------------------------
+                    imagen = get_image_pollinations(tema, width=500, height=500)
+
+                    st.image(imagen, caption=tema)
+
+                    # Permite descargarla
+                    imagen.save("temp.png")
+
+                    with open("temp.png", "rb") as f:
+                        st.download_button(
+                            "Descargar imagen",
+                            f,
+                            file_name=f"{tema}.png",
+                            mime="image/png"
+                        )
