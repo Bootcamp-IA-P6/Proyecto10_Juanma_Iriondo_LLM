@@ -595,17 +595,17 @@ elif menu == "⚙️ Configuración":
             prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
             st.info(prompt_call)
 
-            with st.spinner("Procesando información, por favor espere..."):
+            with st.spinner("Preparando articulo, por favor espere..."):
                 with st.container(border=True):
 
-                    # article = gen_article()
-                    article = prueba_article()
+                    article = gen_article()
+                    # article = prueba_article()
 
             with st.spinner("Preparando imagen, por favor espere..."):
                 with st.container(border=True):
 
                     gen_image()
-                    
+
 
                   
         else:
