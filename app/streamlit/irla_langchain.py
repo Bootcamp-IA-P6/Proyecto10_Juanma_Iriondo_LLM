@@ -3,6 +3,13 @@ import sys
 import streamlit as st
 import pandas as pd
 
+
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+
 # Añade la carpeta superior al path de búsqueda de Python
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -401,16 +408,81 @@ elif menu == "⚙️ Configuración":
     if st.button('Crear Articulo'):
         if tema:
             # Hacer try except para la funcion de llamada
-            prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
+            # prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
+            prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
             st.info(prompt_call)
 
             with st.spinner("Procesando información, por favor espere..."):
                 with st.container(border=True):
-                    #st.write(call_response(prompt_call, MODELS, st.session_state))
 
                     result = call_response(prompt_call, MODELS, st.session_state)
                     st.write(result)
 
+                    # --------------------------------------------------------------------------------------------------------------
+                    # Comienza a trabajar con langchain
+                    # --------------------------------------------------------------------------------------------------------------
+
+                    texto = result['text']
+
+                    # 1. Ajustamos el Prompt para que sea extremadamente estricto
+                    template = """Eres un traductor profesional automático muy preciso.
+                    Traduce el texto del {idioma_entrada} al {idioma_salida}.
+
+                    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
+
+                    Texto a traducir:
+                    {texto}"""
+
+                    # Usamos ChatPromptTemplate que se lleva mejor con ChatGroq y LCEL
+                    prompt_template = ChatPromptTemplate.from_template(template)
+
+                    # 2. Inicializar el Modelo con TEMPERATURE = 0.0 (Clave para evitar que se enrolle)
+                    llm_traduccion = ChatGroq(
+                        temperature=0.0,  # <-- 0.0 hace que sea directo y no invente texto extra
+                        groq_api_key=get_groq_api_key(), 
+                        model_name="llama-3.3-70b-versatile"
+                    )
+
+                    # 3. Creación de la cadena usando el operador LCEL (|)
+                    cadena = prompt_template | llm_traduccion
+
+                    # 4. Ejecución de la cadena
+                    traduccion = cadena.invoke(input={
+                        "idioma_entrada": "español",  
+                        "idioma_salida": idioma, 
+                        "texto": texto
+                    })
+
+                    # 4. EXTRACCIÓN DE TOKENS
+                    # Groq guarda los tokens dentro del diccionario 'response_metadata'
+                    metadata = traduccion.response_metadata
+                    tokens_info = metadata.get("token_usage", {})
+
+                    tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
+                    tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
+                    tokens_totales = tokens_info.get("total_tokens", 0)
+
+                    # 5. EXTRAER EL TEXTO
+                    traduccion = traduccion.content
+
+                    # --- MOSTRAR EN STREAMLIT ---
+                    st.write(traduccion)
+
+                    st.info("Tokens de la Traducción")
+
+                    # Mostramos las métricas de tokens de forma elegante en la interfaz
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
+                    with col2:
+                        st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
+                    with col3:
+                        st.metric(label="Tokens Totales", value=tokens_totales)
+
+                    # ---------------------------------------------------------------------------------------------------------------
+
+
+                    # Empezamos a trabajar con los precios
                     # 1. Convertir el array a un DataFrame de Pandas
                     df = pd.DataFrame(precios_modelos)
 
@@ -419,8 +491,8 @@ elif menu == "⚙️ Configuración":
                     df['precio_token_salida'] = df['precio_token_salida'].astype(float)
 
                     # 2.- Hacer las operaciones
-                    df['precio_tokens_entrada'] = df['precio_token_entrada'] * result['stats']['tokens_enviados']
-                    df['precio_tokens_salida'] = df['precio_token_salida'] * result['stats']['tokens_recibidos']
+                    df['precio_tokens_entrada'] = df['precio_token_entrada'] * (result['stats']['tokens_enviados'] + tokens_input)
+                    df['precio_tokens_salida'] = df['precio_token_salida'] * (result['stats']['tokens_recibidos'] + tokens_output)
 
                     # 3. Mostrar en pantalla como tabla interactiva
                     df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
@@ -439,5 +511,3 @@ elif menu == "⚙️ Configuración":
     #             with st.container(border=True):
     #                 # st.write(call_ollama_cloud())
     #                 pass
-
-
