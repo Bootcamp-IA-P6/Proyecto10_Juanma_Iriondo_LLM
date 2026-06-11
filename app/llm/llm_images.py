@@ -9,6 +9,7 @@ from utils.utils import *
 
 # Libreria de Hugging Face
 from huggingface_hub import InferenceClient
+from huggingface_hub.errors import HfHubHTTPError
 # Libreria para Unsplash
 import requests
 # Libreria de Pollinations
@@ -81,6 +82,9 @@ def get_image_hugging_face(tema):
 
     # Redimensionar a 500x500 píxeles
     image = image.resize((500, 500))
+
+    return image
+
 
 def get_image_pollinations(tema, width=500, height=500):
     """
