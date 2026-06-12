@@ -1,6 +1,7 @@
 import os
 import sys
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 
 from langchain_groq import ChatGroq
@@ -18,6 +19,71 @@ from llm.llm_images import *
 # =====================================================
 # FUNCIONES
 # =====================================================
+def animacion():
+    # Código HTML/CSS con la lancha fuera de borda 🚤
+    codigo_animacion = """
+    <div class="contenedor-oceano">
+        <!-- Isla fija a la izquierda -->
+        <div class="isla">🏝️</div>
+        
+        <!-- Lancha fuera borda que se desplaza desde la derecha -->
+        <div class="fueraborda">🚤</div>
+    </div>
+
+    <style>
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: transparent;
+    }
+
+    .contenedor-oceano {
+        position: relative;
+        width: 100%;
+        height: 180px;
+        background: linear-gradient(180deg, #74b9ff, #0984e3);
+        overflow: hidden;
+        border-radius: 10px;
+    }
+
+    .isla {
+        position: absolute;
+        left: 20px;
+        bottom: 20px;
+        font-size: 70px;
+        z-index: 2;
+        line-height: 1;
+    }
+
+    .fueraborda {
+        position: absolute;
+        bottom: 35px;
+        font-size: 50px; /* Tamaño del emoji de la lancha */
+        z-index: 1;
+        line-height: 1;
+        
+        /* Animación configurada para la fuera borda (un poco más rápida: 4 segundos) */
+        animation-name: navegar;
+        animation-duration: 4s;
+        animation-timing-function: ease-out;
+        animation-fill-mode: forwards; 
+    }
+
+    @keyframes navegar {
+        0% {
+            transform: translateX(100vw); /* Empieza fuera de la pantalla a la derecha */
+        }
+        100% {
+            transform: translateX(120px); /* Se detiene justo al lado de la isla */
+        }
+    }
+    </style>
+    """
+
+    # Inyectamos el componente HTML aislado
+    components.html(codigo_animacion, height=200, scrolling=False)
+
+
 def gen_article():
     result = call_response(prompt_call, MODELS, st.session_state)
     st.write(result)
@@ -32,7 +98,8 @@ def gen_article():
     template = """Eres un traductor profesional automático muy preciso.
     Traduce el texto del {idioma_entrada} al {idioma_salida}.
 
-    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
+    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, 
+    ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
 
     Texto a traducir:
     {texto}"""
@@ -50,38 +117,43 @@ def gen_article():
     # 3. Creación de la cadena usando el operador LCEL (|)
     cadena = prompt_template | llm_traduccion
 
-    # 4. Ejecución de la cadena
-    traduccion = cadena.invoke(input={
-        "idioma_entrada": "español",  
-        "idioma_salida": idioma, 
-        "texto": texto
-    })
+    if idioma != "Español":
+        # 4. Ejecución de la cadena
+        traduccion = cadena.invoke(input={
+            "idioma_entrada": "español",  
+            "idioma_salida": idioma, 
+            "texto": texto
+        })
 
-    # 4. EXTRACCIÓN DE TOKENS
-    # Groq guarda los tokens dentro del diccionario 'response_metadata'
-    metadata = traduccion.response_metadata
-    tokens_info = metadata.get("token_usage", {})
+        # 4. EXTRACCIÓN DE TOKENS
+        # Groq guarda los tokens dentro del diccionario 'response_metadata'
+        metadata = traduccion.response_metadata
+        tokens_info = metadata.get("token_usage", {})
 
-    tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
-    tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
-    tokens_totales = tokens_info.get("total_tokens", 0)
+        tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
+        tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
+        tokens_totales = tokens_info.get("total_tokens", 0)
 
-    # 5. EXTRAER EL TEXTO
-    traduccion = traduccion.content
+        # 5. EXTRAER EL TEXTO
+        traduccion = traduccion.content
 
-    # --- MOSTRAR EN STREAMLIT ---
-    st.write(traduccion)
+        # --- MOSTRAR EN STREAMLIT ---
+        st.write(traduccion)
 
-    st.info("Tokens de la Traducción")
+        st.info("Tokens de la Traducción")
 
-    # Mostramos las métricas de tokens de forma elegante en la interfaz
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
-    with col2:
-        st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
-    with col3:
-        st.metric(label="Tokens Totales", value=tokens_totales)
+        # Mostramos las métricas de tokens de forma elegante en la interfaz
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
+        with col2:
+            st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
+        with col3:
+            st.metric(label="Tokens Totales", value=tokens_totales)
+    else:
+        traduccion = texto
+        tokens_input = 0
+        tokens_output = 0
 
     # ------------------------------------ Código para mostrar precios--------------------------------------------
     # 1. Convertir el array a un DataFrame de Pandas
@@ -98,18 +170,12 @@ def gen_article():
     # 3. Mostrar en pantalla como tabla interactiva
     df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
     df_result['precio_tokens_total'] = df_result['precio_tokens_entrada'] + df_result['precio_tokens_salida']
-    st.subheader("Tabla Interactiva")
+    st.subheader("Tabla de Precios en $")
     st.dataframe(df_result)
     st.write('* Precios en dolares')
 
     return traduccion
 
-
-def prueba_article():
-    articulo = "Hola que tal estas"
-    st.write(articulo)
-
-    return articulo
 
 def gen_image():
     if ia_imagen == "Unsplash":
@@ -132,40 +198,34 @@ def gen_image():
         # ----------------------------------------------------
         # Código de Hugging Face
         # ----------------------------------------------------
-        client = InferenceClient(
-            provider="wavespeed",
-            api_key=get_hf_token(),
-        )
+        try:
+            image_hf = get_image_hugging_face(tema)
 
-        # output is a PIL.Image object
-        image_hf = client.text_to_image(
-            # "A cute alien creature in a spaceship",
-            # "elefante con alas volando",
-            # "elephant with wings flying",
-            # "imagen de un robot",
-            tema,
-            model="black-forest-labs/FLUX.1-dev",
-            # width=500,
-            # height=500,
-        )
+            st.image(image_hf, caption=tema)
 
-        # Redimensionar a 500x500 píxeles
-        image_hf = image_hf.resize((500, 500))
+            # Permite descargarla
+            image_hf.save("temp.png")
 
-        image_hf = get_image_hugging_face(tema)
+            with open("temp.png", "rb") as f:
+                st.download_button(
+                    "Descargar imagen",
+                    f,
+                    file_name=f"{tema}.png",
+                    mime="image/png"
+                )
 
-        st.image(image_hf, caption=tema)
+        except Exception as e:
+            status = getattr(getattr(e, "response", None), "status_code", None)
 
-        # Permite descargarla
-        image_hf.save("temp.png")
+            if status == 402:
+                st.error("Se han agotado los créditos de Hugging Face.")
+            elif status == 401:
+                st.error("API Key incorrecta.")
+            elif status == 429:
+                st.error("Demasiadas peticiones. Inténtalo más tarde.")
+            else:
+                st.error(f"Error: {e}")
 
-        with open("temp.png", "rb") as f:
-            st.download_button(
-                "Descargar imagen",
-                f,
-                file_name=f"{tema}.png",
-                mime="image/png"
-            )
     else:
         # ----------------------------------------------------
         # Código de Pollinations
@@ -184,7 +244,6 @@ def gen_image():
                 file_name=f"{tema}.png",
                 mime="image/png"
             )
-
 
 
 
@@ -317,7 +376,8 @@ with st.sidebar:
             "💬 Chat",
             "📚 Historial",
             "👽 Modelos",
-            "⚙️ Configuración"
+            "⚙️ Configuración",
+            "👨‍💻 Créditos"
         ]
     )
 
@@ -599,17 +659,87 @@ elif menu == "⚙️ Configuración":
                 with st.container(border=True):
 
                     article = gen_article()
-                    # article = prueba_article()
 
             with st.spinner("Preparando imagen, por favor espere..."):
                 with st.container(border=True):
 
                     gen_image()
-
-
-                  
+      
         else:
             st.info("Debes escribir un tema")
+
+            
+# =====================================================
+# CREDITOS
+# =====================================================
+elif menu == "👨‍💻 Créditos":
+    # st.title("👨‍💻 Créditos")
+
+    # Poner las imagenes aquí
+    col11, col12 = st.columns([1, 4])  # Ajusta las proporciones según el tamaño del avatar
+    #col11, col12 = st.columns(2)
+
+    with col11:
+        ruta_avatar = os.path.join(ruta_actual, "..", "logos", "juanma.jpg")
+        st.image(ruta_avatar, width=150)
+
+    with col12:
+        st.write("### Juan Manuel Iriondo Ortega")
+        st.write("### Data Analyst & AI Developer")
+
+    st.divider()
+
+    # Diccionario de islas con sus coordenadas (Latitud, Longitud)
+    ISLAS = {
+        "islas maldivas": {"lat": 3.202778, "lon": 73.22068},
+        "isla tortuga": {"lat": 9.77323, "lon": -84.89545},
+        "Lanzarote": {"lat": 28.96302, "lon": -13.54769},
+        "Menorca": {"lat": 39.88944, "lon": 4.26416},
+        "Madeira": {"lat": 32.79673, "lon": -17.04323}
+    }
+
+    # Selector de isla en la interfaz
+    isla_seleccionada = st.selectbox("Selecciona una isla para tus vacaciones:", list(ISLAS.keys()))
+
+    # Obtener coordenadas de la ciudad elegida
+    lat = ISLAS[isla_seleccionada]["lat"]
+    lon = ISLAS[isla_seleccionada]["lon"]
+
+    # URL de la API de Open-Meteo (pedimos temperatura actual y velocidad del viento)
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+
+    # Botón para actualizar el clima
+    if st.button("Obtener Clima"):
+        with st.spinner("Cargando datos..."):
+
+            animacion()
+
+            try:
+                # Petición a la API
+                respuesta = requests.get(url)
+                datos = respuesta.json()
+                
+                # Extraer la información del clima actual
+                clima_actual = datos["current_weather"]
+                temperatura = clima_actual["temperature"]
+                viento = clima_actual["windspeed"]
+                
+                st.success(# Separador visual
+                    f"Datos actualizados para **{isla_seleccionada}**"
+                )
+                
+                # Mostrar los datos estéticamente usando las "metrics" de Streamlit
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric(label="Temperatura", value=f"{temperatura} °C")
+                    
+                with col2:
+                    st.metric(label="Velocidad del Viento", value=f"{viento} km/h")
+                    
+            except Exception as e:
+                st.error("Hubo un error al conectar con la API Open-Meteo. Inténtalo de nuevo.")
+
 
     # st.divider()
 
@@ -619,36 +749,14 @@ elif menu == "⚙️ Configuración":
     #                 # st.write(call_ollama_cloud())
     #                 pass
 
-    st.divider()
+    # st.divider()
 
-    if st.button('Crear Imagen'):
-         with st.spinner("Preparando imagen, por favor espere..."):
-                with st.container(border=True):
+    # if st.button('Crear Imagen'):
+    #      with st.spinner("Preparando imagen, por favor espere..."):
+    #             with st.container(border=True):
 
-                    gen_image()
+    #                 gen_image()
 
-                    # ----------------------------------------------------
-                    # Código de Google
-                    # ----------------------------------------------------
-                    # query="Un gato astronauta estilo acuarela"
+    # st.divider()
 
-                    # # Llamamos a nuestra función pasándole el prompt
-                    # image_bytes = get_image_google(query)
-                    
-                    # if image_bytes:
-                    #     # Convertimos los bytes a un objeto de imagen PIL para mostrarlo
-                    #     imagen_pil = Image.open(BytesIO(image_bytes))
-                        
-                    #     # Mostramos la imagen en pantalla con ancho limitado
-                    #     st.image(imagen_pil, caption="Resultado de Nano Banana AI", width=550)
-                    #     st.success("¡Imagen creada!")
-                        
-                    #     # Botón para descargar la imagen directamente
-                    #     st.download_button(
-                    #         label="💾 Descargar Imagen (PNG)",
-                    #         data=image_bytes,
-                    #         file_name="nano_banana_output.png",
-                    #         mime="image/png"
-                    #     )
-                    # else:
-                    #     st.error("No se pudo generar la imagen. Inténtalo con otra descripción.")
+
