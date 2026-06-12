@@ -83,6 +83,7 @@ def animacion():
     # Inyectamos el componente HTML aislado
     components.html(codigo_animacion, height=200, scrolling=False)
 
+
 def gen_article():
     result = call_response(prompt_call, MODELS, st.session_state)
     st.write(result)
@@ -97,7 +98,8 @@ def gen_article():
     template = """Eres un traductor profesional automático muy preciso.
     Traduce el texto del {idioma_entrada} al {idioma_salida}.
 
-    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
+    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, 
+    ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
 
     Texto a traducir:
     {texto}"""
@@ -115,38 +117,43 @@ def gen_article():
     # 3. Creación de la cadena usando el operador LCEL (|)
     cadena = prompt_template | llm_traduccion
 
-    # 4. Ejecución de la cadena
-    traduccion = cadena.invoke(input={
-        "idioma_entrada": "español",  
-        "idioma_salida": idioma, 
-        "texto": texto
-    })
+    if idioma != "Español":
+        # 4. Ejecución de la cadena
+        traduccion = cadena.invoke(input={
+            "idioma_entrada": "español",  
+            "idioma_salida": idioma, 
+            "texto": texto
+        })
 
-    # 4. EXTRACCIÓN DE TOKENS
-    # Groq guarda los tokens dentro del diccionario 'response_metadata'
-    metadata = traduccion.response_metadata
-    tokens_info = metadata.get("token_usage", {})
+        # 4. EXTRACCIÓN DE TOKENS
+        # Groq guarda los tokens dentro del diccionario 'response_metadata'
+        metadata = traduccion.response_metadata
+        tokens_info = metadata.get("token_usage", {})
 
-    tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
-    tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
-    tokens_totales = tokens_info.get("total_tokens", 0)
+        tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
+        tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
+        tokens_totales = tokens_info.get("total_tokens", 0)
 
-    # 5. EXTRAER EL TEXTO
-    traduccion = traduccion.content
+        # 5. EXTRAER EL TEXTO
+        traduccion = traduccion.content
 
-    # --- MOSTRAR EN STREAMLIT ---
-    st.write(traduccion)
+        # --- MOSTRAR EN STREAMLIT ---
+        st.write(traduccion)
 
-    st.info("Tokens de la Traducción")
+        st.info("Tokens de la Traducción")
 
-    # Mostramos las métricas de tokens de forma elegante en la interfaz
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
-    with col2:
-        st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
-    with col3:
-        st.metric(label="Tokens Totales", value=tokens_totales)
+        # Mostramos las métricas de tokens de forma elegante en la interfaz
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
+        with col2:
+            st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
+        with col3:
+            st.metric(label="Tokens Totales", value=tokens_totales)
+    else:
+        traduccion = texto
+        tokens_input = 0
+        tokens_output = 0
 
     # ------------------------------------ Código para mostrar precios--------------------------------------------
     # 1. Convertir el array a un DataFrame de Pandas
@@ -163,7 +170,7 @@ def gen_article():
     # 3. Mostrar en pantalla como tabla interactiva
     df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
     df_result['precio_tokens_total'] = df_result['precio_tokens_entrada'] + df_result['precio_tokens_salida']
-    st.subheader("Tabla Interactiva")
+    st.subheader("Tabla de Precios en $")
     st.dataframe(df_result)
     st.write('* Precios en dolares')
 
@@ -237,7 +244,6 @@ def gen_image():
                 file_name=f"{tema}.png",
                 mime="image/png"
             )
-
 
 
 
@@ -693,7 +699,7 @@ elif menu == "👨‍💻 Créditos":
     }
 
     # Selector de isla en la interfaz
-    isla_seleccionada = st.selectbox("Selecciona una isla para sus vacaciones:", list(ISLAS.keys()))
+    isla_seleccionada = st.selectbox("Selecciona una isla para tus vacaciones:", list(ISLAS.keys()))
 
     # Obtener coordenadas de la ciudad elegida
     lat = ISLAS[isla_seleccionada]["lat"]
