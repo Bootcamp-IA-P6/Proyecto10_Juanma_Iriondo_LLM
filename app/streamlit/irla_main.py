@@ -648,23 +648,40 @@ elif menu == "⚙️ Configuración":
 
     st.divider()
 
+    # Filtro tema
+    quien = st.text_input(
+        "Escribe quien publica el artículo..."
+    )
+
+    st.divider()
+
     if st.button('Crear Articulo'):
         if tema:
-            # Hacer try except para la funcion de llamada
-            # prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
-            prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
-            st.info(prompt_call)
+            if quien:
+                # prompt_call = f"Crea un artículo en idioma {idioma} para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
+                #prompt_call = f"Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} con {st.session_state.hashtags} hashtags"
+                
+                prompt_call = f"""Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} 
+                                    con {st.session_state.hashtags} hashtags y 3 emojis, 
+                                    al principio que ponga creado por {quien} y genera un titulo que resuma el articulo"""
 
-            with st.spinner("Preparando articulo, por favor espere..."):
-                with st.container(border=True):
+                # prompt_call = f"""Crea un artículo para {plataforma} con {st.session_state.words} palabras sobre {tema} 
+                #                     con {st.session_state.hashtags} hashtags y 3 emojis, 
+                #                     al principio que ponga creado por {quien} y genera un titulo que resuma el articulo
+                #                     y devuelve la salida en un json dividida en quien publica, titulo y articulo"""
+                st.info(prompt_call)
 
-                    article = gen_article()
+                with st.spinner("Preparando articulo, por favor espere..."):
+                    with st.container(border=True):
 
-            with st.spinner("Preparando imagen, por favor espere..."):
-                with st.container(border=True):
+                        article = gen_article()
 
-                    gen_image()
-      
+                with st.spinner("Preparando imagen, por favor espere..."):
+                    with st.container(border=True):
+
+                        gen_image()
+            else:
+                st.info("Debes escribir quien publica el artículo")
         else:
             st.info("Debes escribir un tema")
 
@@ -739,24 +756,3 @@ elif menu == "👨‍💻 Créditos":
                     
             except Exception as e:
                 st.error("Hubo un error al conectar con la API Open-Meteo. Inténtalo de nuevo.")
-
-
-    # st.divider()
-
-    # if st.button('Probando ollama cloud'):
-    #      with st.spinner("Procesando información, por favor espere..."):
-    #             with st.container(border=True):
-    #                 # st.write(call_ollama_cloud())
-    #                 pass
-
-    # st.divider()
-
-    # if st.button('Crear Imagen'):
-    #      with st.spinner("Preparando imagen, por favor espere..."):
-    #             with st.container(border=True):
-
-    #                 gen_image()
-
-    # st.divider()
-
-
