@@ -8,7 +8,7 @@ from utils.utils import get_groq_api_key  # Asegúrate de que esta importación 
 # 1. DEFINICIÓN DEL ESTADO DEL GRAFO
 class AgentState(TypedDict):
     modelo_redactor: str
-    temperatura: float
+    temperature: float
     max_tokens: int
     plataforma: str
     words: int
@@ -24,19 +24,19 @@ class AgentState(TypedDict):
 
 # 2. NODO DEL AGENTE REDACTOR
 def agente_redactor(state: AgentState):
-    # Ver que modelo usa para saber la api key a usar
-    if state['modelo_redactor'] == "llama3.2:1b":
-        modelo = "llama-3.3-70b-versatile"
-    else:
-        modelo = state['modelo_redactor']
+    modelo_elegido = state["modelo_redactor"]
+    temp = state["temperature"]
+    max_t = state["max_tokens"]
+
+    if  modelo_elegido == "llama3.2:1b":
+        modelo_elegido="llama-3.3-70b-versatile"
 
     llm = ChatGroq(
-        #temperature=0.7,
-        temperature=state['temperatura'],
-        max_tokens=state['max_tokens'],
+        temperature=temp,
+        max_tokens=max_t,
         groq_api_key=get_groq_api_key(), 
         #model_name="llama-3.3-70b-versatile"
-        model_name=modelo
+        model_name=modelo_elegido
     )
     
     # Guías de estilo personalizadas para forzar la diferenciación de plataformas

@@ -92,7 +92,7 @@ def gen_article():
     # Preparamos el diccionario de estado con los inputs capturados de Streamlit
     config_inicial = {
         "modelo_redactor": st.session_state.selected_model,
-        "temperatura": st.session_state.temperature,
+        "temperature": st.session_state.temperature,
         "max_tokens": st.session_state.max_tokens,
         "plataforma": plataforma,        # Variable global de tu st.radio de plataforma
         "words": st.session_state.words,
