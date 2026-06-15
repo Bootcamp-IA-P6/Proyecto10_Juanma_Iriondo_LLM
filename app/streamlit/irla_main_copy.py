@@ -14,7 +14,6 @@ from utils.utils import *
 from llm.llm_stream import *
 from llm.llm_call import *
 from llm.llm_images import *
-from llm.editorial_graph import construir_grafo_editorial
 
 
 # =====================================================
@@ -86,123 +85,96 @@ def animacion():
 
 
 def gen_article():
-    # 1. Compilar e inicializar el Grafo Editorial
-    grafo = construir_grafo_editorial()
-    
-    # Preparamos el diccionario de estado con los inputs capturados de Streamlit
-    config_inicial = {
-        "modelo_redactor": st.session_state.selected_model,
-        "temperature": st.session_state.temperature,
-        "max_tokens": st.session_state.max_tokens,
-        "plataforma": plataforma,        # Variable global de tu st.radio de plataforma
-        "words": st.session_state.words,
-        "tema": tema,                    # Variable global de tu st.text_input de tema
-        "hashtags": st.session_state.hashtags,
-        "quien": quien,                  # Variable global de tu st.text_input de quien publica
-        "idioma": idioma,                # Variable global de tu st.radio de idioma
-        "revision_history": [],
-        "texto_final": "",
-        "tokens_input": 0,
-        "tokens_output": 0
-    }
-    
-    # Ejecutamos el flujo multi-agente
-    resultado_grafo = grafo.invoke(config_inicial)
-    
-    # Recuperamos el artículo final pulido y los tokens totales acumulados por los agentes
-    texto_espanol = resultado_grafo["texto_final"]
-    agent_tokens_in = resultado_grafo["tokens_input"]
-    agent_tokens_out = resultado_grafo["tokens_output"]
-    
-    # Mostramos el resultado original de los agentes en pantalla
-    st.subheader("Artículo Generado (Español)")
-    st.write(texto_espanol)
+    result = call_response(prompt_call, MODELS, st.session_state)
+    st.write(result)
 
-    st.info("Tokens Utilizados en la Fase de Redacción")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(label="Tokens Redac. Enviados", value=agent_tokens_in)
-    with col2:
-        st.metric(label="Tokens Redac. Recibidos", value=agent_tokens_out)
-    with col3:
-        st.metric(label="Tokens Redac. Totales", value=agent_tokens_in + agent_tokens_out)
-    
-    # Inicialización de variables para la traducción condicional
-    traduccion_final = texto_espanol
-    tokens_trans_input = 0
-    tokens_trans_output = 0
+    # --------------------------------------------------------------------------------------------------------------
+    # Comienza a trabajar con langchain
+    # --------------------------------------------------------------------------------------------------------------
 
-    # 2. FLUJO DE TRADUCCIÓN: Solo si el idioma seleccionado no es Español
+    texto = result['text']
+
+    # 1. Ajustamos el Prompt para que sea extremadamente estricto
+    template = """Eres un traductor profesional automático muy preciso.
+    Traduce el texto del {idioma_entrada} al {idioma_salida}.
+
+    REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, 
+    ni agregues notas al final. Si el usuario dice "Hola", tú solo traduces esa palabra.
+
+    Texto a traducir:
+    {texto}"""
+
+    # Usamos ChatPromptTemplate que se lleva mejor con ChatGroq y LCEL
+    prompt_template = ChatPromptTemplate.from_template(template)
+
+    # 2. Inicializar el Modelo con TEMPERATURE = 0.0 (Clave para evitar que se enrolle)
+    llm_traduccion = ChatGroq(
+        temperature=0.0,  # <-- 0.0 hace que sea directo y no invente texto extra
+        groq_api_key=get_groq_api_key(), 
+        model_name="llama-3.3-70b-versatile"
+    )
+
+    # 3. Creación de la cadena usando el operador LCEL (|)
+    cadena = prompt_template | llm_traduccion
+
     if idioma != "Español":
-        template = """Eres un traductor profesional automático muy preciso.
-        Traduce el texto del español al {idioma_salida}.
-
-        REGLA CRÍTICA: Devuelve ÚNICAMENTE el texto traducido final. No agregues introducciones, no saludes, no des explicaciones, ni agregues notas al final.
-
-        Texto a traducir:
-        {texto}"""
-
-        prompt_template = ChatPromptTemplate.from_template(template)
-
-        llm_traduccion = ChatGroq(
-            temperature=0.0,  
-            groq_api_key=get_groq_api_key(), 
-            model_name="llama-3.3-70b-versatile"
-        )
-
-        cadena = prompt_template | llm_traduccion
-        
-        # Ejecutamos la traducción
-        respuesta_traduccion = cadena.invoke(input={
+        # 4. Ejecución de la cadena
+        traduccion = cadena.invoke(input={
+            "idioma_entrada": "español",  
             "idioma_salida": idioma, 
-            "texto": texto_espanol
+            "texto": texto
         })
 
-        # Extraemos métricas de tokens de la traducción
-        metadata_trans = respuesta_traduccion.response_metadata.get("token_usage", {})
-        tokens_trans_input = metadata_trans.get("prompt_tokens", 0)
-        tokens_trans_output = metadata_trans.get("completion_tokens", 0)
-        tokens_trans_totales = metadata_trans.get("total_tokens", 0)
+        # 4. EXTRACCIÓN DE TOKENS
+        # Groq guarda los tokens dentro del diccionario 'response_metadata'
+        metadata = traduccion.response_metadata
+        tokens_info = metadata.get("token_usage", {})
 
-        traduccion_final = respuesta_traduccion.content
+        tokens_input = tokens_info.get("prompt_tokens", 0)       # Enviados
+        tokens_output = tokens_info.get("completion_tokens", 0)  # Recibidos
+        tokens_totales = tokens_info.get("total_tokens", 0)
 
-        # Mostramos la traducción y sus métricas independientes en la interfaz
-        st.subheader(f"Traducción Final ({idioma})")
-        st.write(traduccion_final)
+        # 5. EXTRAER EL TEXTO
+        traduccion = traduccion.content
 
-        st.info("Tokens Utilizados en la Fase de Traducción")
+        # --- MOSTRAR EN STREAMLIT ---
+        st.write(traduccion)
+
+        st.info("Tokens de la Traducción")
+
+        # Mostramos las métricas de tokens de forma elegante en la interfaz
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric(label="Tokens Trad. Enviados", value=tokens_trans_input)
+            st.metric(label="Tokens Enviados (Prompt)", value=tokens_input)
         with col2:
-            st.metric(label="Tokens Trad. Recibidos", value=tokens_trans_output)
+            st.metric(label="Tokens Recibidos (Completion)", value=tokens_output)
         with col3:
-            st.metric(label="Tokens Trad. Totales", value=tokens_trans_totales)
+            st.metric(label="Tokens Totales", value=tokens_totales)
+    else:
+        traduccion = texto
+        tokens_input = 0
+        tokens_output = 0
 
-    # 3. CÁLCULO FINANCIERO Y TABLA DE PRECIOS UNIFICADA
-    # Convertimos la matriz de precios a un DataFrame de Pandas
+    # ------------------------------------ Código para mostrar precios--------------------------------------------
+    # 1. Convertir el array a un DataFrame de Pandas
     df = pd.DataFrame(precios_modelos)
+
+    # 2. Convertir las columnas necesarias a float
     df['precio_token_entrada'] = df['precio_token_entrada'].astype(float)
     df['precio_token_salida'] = df['precio_token_salida'].astype(float)
 
-    # Suma global de tokens: (Tokens totales de Agentes) + (Tokens de Traducción si existió)
-    total_entrada_global = agent_tokens_in + tokens_trans_input
-    total_salida_global = agent_tokens_out + tokens_trans_output
+    # 2.- Hacer las operaciones
+    df['precio_tokens_entrada'] = df['precio_token_entrada'] * (result['stats']['tokens_enviados'] + tokens_input)
+    df['precio_tokens_salida'] = df['precio_token_salida'] * (result['stats']['tokens_recibidos'] + tokens_output)
 
-    # Operaciones matemáticas multiplicando costes por volumen real de tokens
-    df['precio_tokens_entrada'] = df['precio_token_entrada'] * total_entrada_global
-    df['precio_tokens_salida'] = df['precio_token_salida'] * total_salida_global
-
-    # Generamos la tabla limpia e interactiva
-    df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']].copy()
+    # 3. Mostrar en pantalla como tabla interactiva
+    df_result = df[['modelo', 'precio_tokens_entrada', 'precio_tokens_salida']]
     df_result['precio_tokens_total'] = df_result['precio_tokens_entrada'] + df_result['precio_tokens_salida']
-    
-    st.subheader("Tabla de Costes Totales de la Operación ($)")
+    st.subheader("Tabla de Precios en $")
     st.dataframe(df_result)
-    st.write('* Precios expresados en dólares. Incluyen el coste acumulado del proceso de Agentes (Redacción + Revisión) más la Traducción.')
+    st.write('* Precios en dolares')
 
-    return traduccion_final
-
+    return traduccion
 
 
 def gen_image():
@@ -784,4 +756,3 @@ elif menu == "👨‍💻 Créditos":
                     
             except Exception as e:
                 st.error("Hubo un error al conectar con la API Open-Meteo. Inténtalo de nuevo.")
-
