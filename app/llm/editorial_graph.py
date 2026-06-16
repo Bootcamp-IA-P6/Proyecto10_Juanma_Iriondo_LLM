@@ -2,6 +2,7 @@ import operator
 from typing import TypedDict, Annotated, List
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
 from utils.utils import get_groq_api_key  # Asegúrate de que esta importación apunte correctamente a tu utils
 
@@ -38,6 +39,22 @@ def agente_redactor(state: AgentState):
         #model_name="llama-3.3-70b-versatile"
         model_name=modelo_elegido
     )
+
+    # # ✅ Aquí está el cambio clave: ramificamos el LLM según el modelo
+    # if modelo_elegido == "llama3.2:1b":
+    #     llm = ChatOllama(
+    #         model="llama3.2:1b",       # nombre exacto tal como aparece en `ollama list`
+    #         temperature=temp,
+    #         num_predict=max_t,         # en Ollama, max_tokens se llama num_predict
+    #         base_url="http://localhost:11434",  # explícito, aunque es el valor por defecto
+    #     )
+    # else:
+    #     llm = ChatGroq(
+    #         temperature=temp,
+    #         max_tokens=max_t,
+    #         groq_api_key=get_groq_api_key(),
+    #         model_name=modelo_elegido
+    #     )
     
     # Guías de estilo personalizadas para forzar la diferenciación de plataformas
     guia_estilo = {
